@@ -1,0 +1,1113 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Agenda · 1C · Athénée Royal Florennes</title>
+<link href="https://fonts.googleapis.com/css2?family=Caveat:wght@400;600;700&family=Nunito:ital,wght@0,400;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #f5f0e8;
+    --surface: #fefcf7;
+    --surface2: #f9f5ec;
+    --border: #ddd5c0;
+    --border2: #c8bfa8;
+    --text: #2c2416;
+    --text2: #6b5d45;
+    --text3: #a0917a;
+    --blue: #1a56a0;
+    --blue-light: #dde8f5;
+    --red: #b91c1c;
+    --red-light: #fde8e8;
+    --green: #166534;
+    --green-light: #dcfce7;
+    --orange: #c2410c;
+    --purple: #6d28d9;
+    --yellow: #a16207;
+    --line-color: #c9daf5;
+    --margin-color: #f5b8b8;
+    --radius: 4px;
+    --radius-sm: 3px;
+    --shadow: 0 2px 8px rgba(44,36,22,0.12);
+    --shadow-lg: 0 6px 30px rgba(44,36,22,0.18);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; width: 100%; overflow: hidden; }
+  body { font-family: 'Nunito', sans-serif; background: var(--bg); color: var(--text); }
+  h1,h2,h3,.caveat { font-family: 'Caveat', cursive; }
+
+  /* Paper texture background */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      repeating-linear-gradient(
+        transparent,
+        transparent 27px,
+        var(--line-color) 27px,
+        var(--line-color) 28px
+      );
+    opacity: 0.35;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-shell { display: flex; flex-direction: column; width: 100%; height: 100%; height: 100dvh; background: transparent; position: relative; overflow: hidden; z-index: 1; }
+  .main-area { display: flex; flex-direction: column; flex: 1; overflow: hidden; min-width: 0; }
+
+  /* Header — style couverture de cahier */
+  .app-header {
+    padding: 0 20px;
+    height: 56px;
+    background: var(--blue);
+    border-bottom: 4px solid #0f3d7a;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-shrink: 0;
+    position: relative;
+    overflow: hidden;
+  }
+  .app-header::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 6px;
+    background: repeating-linear-gradient(180deg, #e53e3e 0, #e53e3e 10px, #fff 10px, #fff 20px, #2563eb 20px, #2563eb 30px, #fff 30px, #fff 40px);
+  }
+  .app-header h1 {
+    font-size: 26px;
+    font-weight: 700;
+    color: #fff;
+    letter-spacing: 0.5px;
+    padding-left: 14px;
+  }
+  @media (min-width: 768px) { .app-header { padding: 0 28px; height: 60px; } .app-header h1 { font-size: 30px; } }
+
+  .sync-indicator { display: flex; align-items: center; gap: 6px; font-size: 11px; color: rgba(255,255,255,0.75); font-family: 'Nunito', sans-serif; }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: #4ade80; animation: pulse 2s infinite; flex-shrink: 0; }
+  .sync-dot.offline { background: #f87171; animation: none; }
+  .sync-dot.syncing { background: #fbbf24; animation: pulse .8s infinite; }
+  @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
+
+  .offline-banner { display: none; background: #fef2f2; border-bottom: 2px solid #fca5a5; padding: 7px 20px; align-items: center; gap: 8px; flex-shrink: 0; }
+  .offline-banner.visible { display: flex; }
+  .offline-banner .ob-icon { font-size: 14px; }
+  .offline-banner .ob-text { font-size: 12px; color: #991b1b; font-weight: 700; }
+  .offline-banner .ob-sub { font-size: 11px; color: #b91c1c; margin-left: 4px; }
+
+  /* Pull to refresh */
+  .ptr-container { position: relative; flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .ptr-indicator { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; justify-content: center; gap: 8px; height: 56px; transform: translateY(-56px); transition: transform 0.2s ease; z-index: 10; pointer-events: none; background: var(--surface2); border-bottom: 1px dashed var(--border2); }
+  .ptr-spinner { width: 20px; height: 20px; border: 2.5px solid var(--border); border-top-color: var(--blue); border-radius: 50%; transition: transform 0.15s ease; }
+  .ptr-spinner.spinning { animation: ptr-spin 0.7s linear infinite; }
+  @keyframes ptr-spin { to { transform: rotate(360deg); } }
+  .ptr-label { font-size: 13px; font-weight: 600; color: var(--text2); font-family: 'Caveat', cursive; font-size: 16px; }
+  .ptr-content { flex: 1; overflow-y: auto; display: flex; flex-direction: column; -webkit-overflow-scrolling: touch; overscroll-behavior-y: contain; will-change: transform; }
+
+  /* Tab bar — style reliure spirale */
+  .tab-bar {
+    display: flex;
+    background: var(--surface);
+    border-top: 3px solid var(--border2);
+    flex-shrink: 0;
+    position: relative;
+  }
+  .tab-bar::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 3px;
+    background: repeating-linear-gradient(90deg, var(--blue) 0, var(--blue) 18px, transparent 18px, transparent 28px);
+    opacity: 0.5;
+  }
+  .tab-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 9px 0 11px; background: none; border: none; cursor: pointer; font-family: 'Nunito', sans-serif; color: var(--text3); transition: color .2s; position: relative; }
+  .tab-btn.active { color: var(--blue); }
+  .tab-btn.active::after { content: ''; position: absolute; bottom: 0; left: 20%; right: 20%; height: 3px; background: var(--blue); border-radius: 2px 2px 0 0; }
+  .tab-btn .tab-icon { font-size: 19px; }
+  .tab-btn .tab-label { font-size: 11px; font-weight: 700; }
+  @media (min-width: 768px) { .tab-btn .tab-label { font-size: 13px; } .tab-btn .tab-icon { font-size: 21px; } .tab-btn { padding: 11px 0 13px; } }
+  @supports (padding-bottom: env(safe-area-inset-bottom)) { .tab-bar { padding-bottom: env(safe-area-inset-bottom); } }
+
+  .view { display: none; flex: 1; overflow-y: auto; flex-direction: column; }
+  .view.active { display: flex; }
+
+  /* Calendar */
+  .month-nav { display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 8px; }
+  @media (min-width: 768px) { .month-nav { padding: 18px 28px 10px; } }
+  .month-nav h2 { font-size: 28px; font-weight: 700; text-transform: capitalize; color: var(--blue); }
+  @media (min-width: 1024px) { .month-nav h2 { font-size: 34px; } }
+
+  .nav-btn {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: var(--surface2);
+    border: 2px solid var(--border2);
+    cursor: pointer; font-size: 17px;
+    display: flex; align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
+    color: var(--blue); font-weight: 700;
+  }
+  .nav-btn:hover { background: var(--blue-light); border-color: var(--blue); }
+
+  .day-headers { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 10px; margin-bottom: 2px; }
+  @media (min-width: 768px) { .day-headers { padding: 0 18px; } }
+  .day-header { text-align: center; font-size: 10px; font-weight: 800; color: var(--blue); padding: 3px 0; letter-spacing: 0.5px; text-transform: uppercase; }
+  @media (min-width: 1024px) { .day-header { font-size: 12px; } }
+
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); padding: 0 10px; gap: 2px; flex: 1; }
+  @media (min-width: 768px) { .cal-grid { padding: 0 18px; gap: 3px; } }
+
+  .day-cell {
+    display: flex; flex-direction: column; align-items: center;
+    padding: 5px 2px; border-radius: var(--radius);
+    cursor: pointer; transition: background .15s;
+    position: relative; min-height: 46px;
+    border: none; background: none;
+    font-family: 'Nunito', sans-serif;
+  }
+  @media (min-width: 768px) { .day-cell { min-height: 60px; padding: 7px 4px; } }
+  @media (min-width: 1024px) { .day-cell { min-height: 76px; } }
+
+  .day-cell:hover:not(.other-month):not(.vacances):not(.ferie) { background: rgba(26,86,160,0.06); outline: 1px dashed var(--blue); }
+  .day-cell.selected { background: var(--blue) !important; outline: none !important; }
+  .day-cell.today:not(.selected) { outline: 2px solid var(--blue); background: var(--blue-light); }
+  .day-cell.other-month { opacity: 0; pointer-events: none; }
+  .day-cell .dl { font-size: 9px; font-weight: 800; color: var(--text3); letter-spacing: 0.3px; }
+  .day-cell.selected .dl { color: rgba(255,255,255,.65); }
+  .day-cell.weekend .dl { color: #fca5a5; }
+  .day-cell .dn { font-size: 15px; font-weight: 700; color: var(--text); margin-top: 1px; font-family: 'Caveat', cursive; }
+  @media (min-width: 768px) { .day-cell .dl { font-size: 10px; } .day-cell .dn { font-size: 19px; } }
+  @media (min-width: 1024px) { .day-cell .dn { font-size: 22px; } }
+  .day-cell.selected .dn { color: #fff; }
+  .day-cell.weekend .dn { color: var(--red); }
+
+  .day-cell.vacances:not(.selected):not(.other-month) { background: #fef9c3; }
+  .day-cell.vacances:not(.selected) .dn { color: #a16207; }
+  .day-cell.vacances:not(.selected) .dl { color: #ca8a04; }
+  .day-cell.ferie:not(.selected):not(.other-month) { background: #fce7f3; }
+  .day-cell.ferie:not(.selected) .dn { color: #9d174d; }
+  .day-cell.ferie:not(.selected) .dl { color: #be185d; }
+
+  .absent-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--red); margin-top: 3px; }
+
+  /* Detail panel */
+  .detail-overlay { position: fixed; inset: 0; background: rgba(44,36,22,.4); z-index: 100; display: none; align-items: flex-end; justify-content: center; }
+  @media (min-width: 768px) { .detail-overlay { align-items: center; justify-content: flex-end; padding: 0; } }
+  .detail-overlay.open { display: flex; }
+  .detail-panel {
+    background: var(--surface);
+    border-radius: 16px 16px 0 0;
+    width: 100%; max-height: 90vh;
+    display: flex; flex-direction: column;
+    animation: slideUp .28s cubic-bezier(.22,1,.36,1);
+    border-top: 5px solid var(--blue);
+    /* Lined paper effect */
+    background-image: repeating-linear-gradient(transparent, transparent 27px, var(--line-color) 27px, var(--line-color) 28px);
+    background-color: var(--surface);
+  }
+  @media (min-width: 768px) {
+    .detail-panel {
+      border-radius: 12px; width: 480px; max-height: 85vh;
+      margin-right: 24px;
+      animation: slideIn .28s cubic-bezier(.22,1,.36,1);
+      border-top: none;
+      border-left: 5px solid var(--blue);
+    }
+  }
+  @media (min-width: 1200px) { .detail-panel { width: 540px; } }
+  @keyframes slideUp { from { transform: translateY(60px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+  @keyframes slideIn { from { transform: translateX(40px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+  .detail-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 16px 18px 12px;
+    border-bottom: 2px dashed var(--border);
+    flex-shrink: 0;
+    background: rgba(255,255,255,0.85);
+    position: relative;
+  }
+  .detail-header::before {
+    content: '';
+    position: absolute;
+    left: 52px; top: 0; bottom: 0;
+    width: 1px;
+    background: var(--margin-color);
+    opacity: 0.7;
+  }
+  .detail-header h3 { font-size: 20px; font-weight: 700; text-transform: capitalize; color: var(--blue); font-family: 'Caveat', cursive; }
+  .detail-header .sub { font-size: 11px; color: var(--text2); margin-top: 1px; font-weight: 600; }
+  .close-btn { background: none; border: 2px solid var(--border2); border-radius: 20px; cursor: pointer; color: var(--blue); font-size: 12px; font-weight: 800; font-family: 'Nunito', sans-serif; padding: 4px 12px; transition: all .15s; }
+  .close-btn:hover { background: var(--blue); color: #fff; border-color: var(--blue); }
+  .detail-body { overflow-y: auto; padding: 14px 16px; flex: 1; background: rgba(255,255,255,0.6); }
+
+  .info-section { margin-bottom: 18px; }
+  .info-section-header { display: flex; align-items: center; gap: 7px; margin-bottom: 7px; padding-bottom: 4px; border-bottom: 2px solid var(--border); }
+  .info-section-header .icon { font-size: 16px; }
+  .info-section-header h4 { font-size: 18px; font-weight: 700; color: var(--blue); font-family: 'Caveat', cursive; }
+  .info-body { background: rgba(255,255,255,0.75); border-radius: var(--radius); padding: 10px 12px; border: 1px solid var(--border); border-left: 3px solid var(--blue); }
+  .empty-text { font-size: 13px; color: var(--text3); font-style: italic; font-family: 'Caveat', cursive; font-size: 16px; }
+
+  .vacances-banner { border-radius: var(--radius); padding: 12px 14px; display: flex; align-items: center; gap: 10px; margin-bottom: 18px; }
+  .vacances-banner .vb-icon { font-size: 22px; }
+  .vacances-banner .vb-title { font-size: 20px; font-weight: 700; font-family: 'Caveat', cursive; }
+  .vacances-banner .vb-sub { font-size: 12px; margin-top: 2px; font-weight: 600; }
+
+  .activite-row { display: flex; align-items: stretch; gap: 10px; padding: 9px 0; border-bottom: 1px dashed var(--border); }
+  .activite-row:last-child { border-bottom: none; }
+  .activite-row.pause { opacity: .5; }
+  .color-bar { width: 4px; border-radius: 2px; flex-shrink: 0; min-height: 34px; }
+  .activite-content { flex: 1; }
+  .activite-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 3px; }
+  .activite-titre { font-size: 14px; font-weight: 700; color: var(--text); flex: 1; margin-right: 8px; }
+  .activite-row.pause .activite-titre { color: var(--text3); font-weight: 400; font-style: italic; }
+  .activite-heure { font-size: 11px; color: var(--text2); font-weight: 700; white-space: nowrap; font-family: 'Caveat', cursive; font-size: 14px; }
+  .activite-meta { display: flex; flex-wrap: wrap; gap: 5px; }
+  .meta-chip { background: var(--surface2); border: 1px solid var(--border); border-radius: 3px; padding: 2px 6px; font-size: 11px; color: var(--text2); font-weight: 600; }
+
+  .prof-absent-row { display: flex; align-items: center; justify-content: space-between; padding: 7px 0; border-bottom: 1px dashed var(--border); }
+  .prof-absent-row:last-of-type { border-bottom: none; }
+  .prof-nom { font-size: 14px; font-weight: 700; }
+  .prof-matiere { font-size: 12px; color: var(--text2); margin-top: 1px; }
+  .motif-chip { background: var(--red-light); color: var(--red); border-radius: 3px; padding: 3px 9px; font-size: 11px; font-weight: 800; white-space: nowrap; margin-left: 10px; border: 1px solid #fca5a5; }
+  .sync-row { display: flex; align-items: center; gap: 6px; margin-top: 8px; }
+  .sync-row .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .sync-row span { font-size: 11px; color: var(--text3); font-style: italic; }
+
+  .tache-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px dashed var(--border); }
+  .tache-row:last-of-type { border-bottom: none; }
+  .badge { border-radius: 3px; padding: 3px 7px; color: #fff; font-size: 11px; font-weight: 800; white-space: nowrap; font-family: 'Caveat', cursive; font-size: 14px; }
+  .tache-titre { flex: 1; font-size: 14px; color: var(--text); font-weight: 600; }
+  .del-btn { background: none; border: none; cursor: pointer; font-size: 14px; padding: 2px; }
+
+  .btn {
+    display: block; width: 100%; padding: 12px;
+    background: var(--blue); color: #fff;
+    border: none; border-radius: var(--radius);
+    font-family: 'Nunito', sans-serif; font-size: 14px; font-weight: 800;
+    cursor: pointer; transition: opacity .15s, transform .1s;
+    letter-spacing: 0.3px;
+  }
+  .btn:hover { opacity: .88; transform: translateY(-1px); }
+  .btn:disabled { opacity: .35; cursor: default; transform: none; }
+
+  /* Mini modal */
+  .mini-modal-overlay { position: fixed; inset: 0; background: rgba(44,36,22,.5); z-index: 200; display: none; align-items: flex-end; justify-content: center; }
+  @media (min-width: 768px) { .mini-modal-overlay { align-items: center; } }
+  .mini-modal-overlay.open { display: flex; }
+  .mini-modal {
+    background: var(--surface);
+    border-radius: 16px 16px 0 0; width: 100%; padding: 22px 22px 34px;
+    animation: slideUp .25s cubic-bezier(.22,1,.36,1);
+    border-top: 4px solid var(--blue);
+    background-image: repeating-linear-gradient(transparent, transparent 27px, var(--line-color) 27px, var(--line-color) 28px);
+    background-color: var(--surface);
+  }
+  @media (min-width: 768px) {
+    .mini-modal {
+      border-radius: 12px; max-width: 420px; width: 90%;
+      animation: fadeScale .25s cubic-bezier(.22,1,.36,1);
+      border: 2px solid var(--border2); border-top: 4px solid var(--blue);
+    }
+  }
+  @keyframes fadeScale { from { transform: scale(.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .mini-modal h4 { font-size: 24px; font-weight: 700; margin-bottom: 14px; font-family: 'Caveat', cursive; color: var(--blue); }
+  .form-label { font-size: 12px; color: var(--text2); margin-bottom: 3px; margin-top: 10px; display: block; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; }
+  .form-input {
+    width: 100%; border: 1px solid var(--border2); border-radius: var(--radius);
+    padding: 9px 11px; font-size: 14px; font-family: 'Nunito', sans-serif;
+    background: rgba(255,255,255,0.8); color: var(--text);
+    outline: none; transition: border-color .15s;
+  }
+  .form-input:focus { border-color: var(--blue); background: #fff; }
+  .palette-row { display: flex; gap: 10px; margin: 10px 0; }
+  .color-circle { width: 32px; height: 32px; border-radius: 50%; border: none; cursor: pointer; transition: transform .15s; outline: 3px solid transparent; outline-offset: 2px; }
+  .color-circle.selected { outline-color: var(--blue); transform: scale(1.18); }
+
+  /* Eleve card */
+  .eleve-card {
+    display: flex; align-items: center; gap: 14px;
+    background: var(--blue); border-radius: var(--radius);
+    padding: 14px 18px; margin: 16px;
+  }
+  @media (min-width: 768px) { .eleve-card { margin: 20px 28px 14px; } }
+  .eleve-avatar { width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.25); display: flex; align-items: center; justify-content: center; color: #fff; font-weight: 700; font-size: 22px; flex-shrink: 0; font-family: 'Caveat', cursive; border: 2px solid rgba(255,255,255,0.4); }
+  .eleve-name { font-size: 16px; font-weight: 800; color: #fff; }
+  .eleve-sub { font-size: 12px; color: rgba(255,255,255,0.8); font-weight: 600; margin-top: 2px; }
+
+  /* Segmented */
+  .segmented { display: flex; gap: 6px; padding: 0 16px; margin-bottom: 14px; }
+  @media (min-width: 768px) { .segmented { padding: 0 28px; } }
+  .seg-btn {
+    flex: 1; padding: 9px;
+    border-radius: var(--radius);
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800;
+    color: var(--text2); cursor: pointer; transition: all .15s;
+  }
+  .seg-btn.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  /* Form card */
+  .form-card {
+    margin: 0 16px;
+    background: rgba(255,255,255,0.75);
+    border-radius: var(--radius); padding: 14px;
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--blue);
+    box-shadow: var(--shadow);
+    background-image: repeating-linear-gradient(transparent, transparent 27px, var(--line-color) 27px, var(--line-color) 28px);
+    background-color: rgba(255,255,255,0.85);
+  }
+  @media (min-width: 768px) { .form-card { margin: 0 28px; max-width: 560px; } }
+  .form-row { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .form-row label { font-size: 13px; color: var(--text2); font-weight: 700; }
+  .form-row .form-input { width: 130px; text-align: center; }
+
+  /* Chat */
+  .chat-wrap { display: flex; flex-direction: column; height: 100%; }
+  .class-tabs { display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto; background: var(--surface); border-bottom: 2px dashed var(--border); flex-shrink: 0; scrollbar-width: none; }
+  @media (min-width: 768px) { .class-tabs { padding: 12px 20px; } }
+  .class-tabs::-webkit-scrollbar { display: none; }
+  .class-tab {
+    padding: 6px 14px; border-radius: 3px;
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    font-family: 'Nunito', sans-serif; font-size: 12px; font-weight: 800;
+    color: var(--text2); cursor: pointer; white-space: nowrap; transition: all .15s;
+  }
+  .class-tab.active { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  .messages-area { flex: 1; overflow-y: auto; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  @media (min-width: 768px) { .messages-area { padding: 18px 28px; } }
+  .msg-wrap { display: flex; flex-direction: column; max-width: 80%; }
+  @media (min-width: 1024px) { .msg-wrap { max-width: 60%; } }
+  .msg-wrap.me { align-self: flex-end; align-items: flex-end; }
+  .msg-wrap.them { align-self: flex-start; align-items: flex-start; }
+  .msg-auteur { font-size: 11px; font-weight: 800; color: var(--text3); margin-bottom: 3px; }
+  .bubble { border-radius: 3px; padding: 9px 13px; font-size: 14px; line-height: 1.45; font-weight: 600; }
+  .bubble.me { background: var(--blue); color: #fff; border-radius: 10px 3px 3px 10px; }
+  .bubble.them { background: rgba(255,255,255,0.85); color: var(--text); border: 1px solid var(--border); border-radius: 3px 10px 10px 3px; }
+  .msg-time { font-size: 10px; color: var(--text3); margin-top: 3px; font-family: 'Caveat', cursive; font-size: 13px; }
+
+  .chat-input-row { display: flex; gap: 8px; padding: 10px 14px; background: var(--surface); border-top: 2px dashed var(--border); flex-shrink: 0; }
+  @media (min-width: 768px) { .chat-input-row { padding: 12px 28px; } }
+  .chat-field {
+    flex: 1; border: 2px solid var(--border); border-radius: 20px;
+    padding: 9px 14px; font-size: 14px; font-family: 'Nunito', sans-serif;
+    background: rgba(255,255,255,0.85); outline: none; transition: border-color .15s;
+    font-weight: 600;
+  }
+  .chat-field:focus { border-color: var(--blue); background: #fff; }
+  .send-btn { width: 38px; height: 38px; border-radius: 50%; background: var(--blue); border: none; color: #fff; cursor: pointer; font-size: 14px; display: flex; align-items: center; justify-content: center; transition: opacity .15s; }
+  .send-btn:disabled { opacity: .35; }
+  .send-btn:hover:not(:disabled) { opacity: .82; }
+</style>
+</head>
+<body>
+<div class="app-shell">
+  <div class="main-area">
+
+    <div class="app-header">
+      <h1 class="caveat" id="header-title">Agenda</h1>
+      <div class="sync-indicator">
+        <div class="sync-dot" id="sync-dot"></div>
+        <span id="last-sync-label">En attente…</span>
+      </div>
+    </div>
+
+    <div class="offline-banner" id="offline-banner">
+      <span class="ob-icon">📡</span>
+      <span class="ob-text">Serveur inaccessible</span>
+      <span class="ob-sub">— données locales affichées</span>
+    </div>
+
+    <div class="ptr-container" id="ptr-container">
+      <div class="ptr-indicator" id="ptr-indicator">
+        <div class="ptr-spinner" id="ptr-spinner"></div>
+        <span class="ptr-label" id="ptr-label">Tirer pour rafraîchir</span>
+      </div>
+
+      <div class="ptr-content" id="ptr-content">
+
+        <div class="view active" id="view-agenda">
+          <div class="month-nav">
+            <button class="nav-btn" id="prev-month">‹</button>
+            <h2 id="month-label"></h2>
+            <button class="nav-btn" id="next-month">›</button>
+          </div>
+          <div class="day-headers">
+            <div class="day-header">Lun</div><div class="day-header">Mar</div>
+            <div class="day-header">Mer</div><div class="day-header">Jeu</div>
+            <div class="day-header">Ven</div><div class="day-header">Sam</div>
+            <div class="day-header">Dim</div>
+          </div>
+          <div class="cal-grid" id="cal-grid"></div>
+        </div>
+
+        <div class="view" id="view-demandes" style="overflow-y:auto;">
+          <div class="eleve-card">
+            <div class="eleve-avatar">H</div>
+            <div><div class="eleve-name">Hugo Mastandrea</div><div class="eleve-sub">Classe 1C · Doische</div></div>
+          </div>
+          <div class="segmented">
+            <button class="seg-btn active" data-tab="changement">Changement d'heure</button>
+            <button class="seg-btn" data-tab="sortie">Sortie anticipée</button>
+          </div>
+          <div class="form-card" id="form-changement">
+            <div class="form-row"><label>Heure initiale</label><input class="form-input" type="time" value="08:00" id="c-heure-init" /></div>
+            <div class="form-row"><label>Nouvelle heure</label><input class="form-input" type="time" value="09:00" id="c-heure-new" /></div>
+            <input class="form-input" placeholder="Motif (ex: Professeur absent)" id="c-motif" style="margin-bottom:12px;" />
+            <button class="btn" onclick="alert('Demande de changement envoyée !')">Envoyer pour signature</button>
+          </div>
+          <div class="form-card" id="form-sortie" style="display:none;">
+            <div class="form-row"><label>Date</label><input class="form-input" type="date" id="s-date" style="width:160px;" /></div>
+            <div class="form-row"><label>Heure</label><input class="form-input" type="time" value="15:00" id="s-heure" /></div>
+            <input class="form-input" placeholder="Motif de la sortie" id="s-motif" style="margin-bottom:12px;" />
+            <button class="btn" onclick="alert('Demande de sortie anticipée envoyée !')">Envoyer pour signature</button>
+          </div>
+        </div>
+
+        <div class="view" id="view-chat">
+          <div class="chat-wrap">
+            <div class="class-tabs" id="class-tabs"></div>
+            <div class="messages-area" id="messages-area"></div>
+            <div class="chat-input-row">
+              <input class="chat-field" placeholder="Message…" id="chat-field" />
+              <button class="send-btn" id="send-btn" disabled>➤</button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <div class="tab-bar">
+      <button class="tab-btn active" data-view="agenda"><span class="tab-icon">📅</span><span class="tab-label">Agenda</span></button>
+      <button class="tab-btn" data-view="demandes"><span class="tab-icon">👤</span><span class="tab-label">Demandes</span></button>
+      <button class="tab-btn" data-view="chat"><span class="tab-icon">💬</span><span class="tab-label">Chat</span></button>
+    </div>
+
+  </div>
+</div>
+
+<div class="detail-overlay" id="detail-overlay">
+  <div class="detail-panel">
+    <div class="detail-header">
+      <div><h3 id="detail-title"></h3><div class="sub">1C · Athénée Royal Florennes</div></div>
+      <button class="close-btn" id="detail-close">Fermer</button>
+    </div>
+    <div class="detail-body" id="detail-body"></div>
+  </div>
+</div>
+
+<div class="mini-modal-overlay" id="add-task-modal">
+  <div class="mini-modal">
+    <h4>Ajouter une tâche</h4>
+    <label class="form-label">Heure</label>
+    <input class="form-input" type="time" id="task-heure" value="08:00" />
+    <label class="form-label">Titre</label>
+    <input class="form-input" type="text" id="task-titre" placeholder="Titre de la tâche" />
+    <label class="form-label">Couleur</label>
+    <div class="palette-row" id="palette-row"></div>
+    <button class="btn" id="task-add-btn" style="margin-top:14px;" disabled>Ajouter</button>
+  </div>
+</div>
+
+<script>
+const SHEET_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vTrt9BJUy5tK4h9-ydYAIVyqv3YcZ3tsuPa2xEALCtI6F66rPQ8kgn5NCTNgagBOQ/pub?output=csv';
+
+const LOCAL_DB = {
+  profsAbsents: [],
+  lastUpdate: "2025-09-01"
+};
+
+let isOnline = navigator.onLine;
+let profsAbsents = [];
+
+function updateOnlineStatus() {
+  isOnline = navigator.onLine;
+  const dot = document.getElementById('sync-dot');
+  const banner = document.getElementById('offline-banner');
+  if (!isOnline) {
+    dot.classList.add('offline');
+    dot.classList.remove('syncing');
+    banner.classList.add('visible');
+    document.getElementById('last-sync-label').textContent = 'Serveur inaccessible';
+  } else {
+    dot.classList.remove('offline');
+    banner.classList.remove('visible');
+  }
+}
+
+window.addEventListener('online',  () => { updateOnlineStatus(); fetchSheet(); });
+window.addEventListener('offline', () => { updateOnlineStatus(); });
+
+(function() {
+  const PTR_THRESHOLD = 64;
+  const PTR_MAX      = 100;
+  const INDICATOR_H  = 56;
+
+  const content   = document.getElementById('ptr-content');
+  const indicator = document.getElementById('ptr-indicator');
+  const spinner   = document.getElementById('ptr-spinner');
+  const label     = document.getElementById('ptr-label');
+
+  let startY      = 0;
+  let currentY    = 0;
+  let pulling     = false;
+  let refreshing  = false;
+
+  function setProgress(ratio) {
+    const indY = -INDICATOR_H + ratio * INDICATOR_H;
+    const contentY = ratio * Math.min(PTR_MAX, PTR_THRESHOLD) * 0.6;
+    indicator.style.transform = `translateY(${indY}px)`;
+    content.style.transform   = `translateY(${contentY}px)`;
+    if (!refreshing) spinner.style.transform = `rotate(${ratio * 360}deg)`;
+    label.textContent = ratio >= 1 ? 'Relâcher pour rafraîchir' : 'Tirer pour rafraîchir';
+  }
+
+  function reset() {
+    indicator.style.transition = 'transform 0.3s cubic-bezier(.22,1,.36,1)';
+    content.style.transition   = 'transform 0.3s cubic-bezier(.22,1,.36,1)';
+    indicator.style.transform  = `translateY(${-INDICATOR_H}px)`;
+    content.style.transform    = 'translateY(0)';
+    spinner.classList.remove('spinning');
+    setTimeout(() => {
+      indicator.style.transition = '';
+      content.style.transition   = '';
+      refreshing = false;
+      pulling    = false;
+    }, 300);
+  }
+
+  async function doRefresh() {
+    refreshing = true;
+    spinner.style.transform = '';
+    spinner.classList.add('spinning');
+    label.textContent = 'Actualisation…';
+    indicator.style.transition = 'transform 0.2s ease';
+    content.style.transition   = 'transform 0.2s ease';
+    indicator.style.transform  = 'translateY(0)';
+    content.style.transform    = `translateY(${INDICATOR_H * 0.6}px)`;
+    try {
+      await fetchSheet();
+      renderCalendar();
+      if (selectedDate) renderDetail(selectedDate);
+    } catch(e) {}
+    await new Promise(r => setTimeout(r, 600));
+    reset();
+  }
+
+  content.addEventListener('touchstart', e => {
+    if (content.scrollTop === 0 && !refreshing) { startY = e.touches[0].clientY; pulling = true; }
+  }, { passive: true });
+
+  content.addEventListener('touchmove', e => {
+    if (!pulling || refreshing) return;
+    currentY = e.touches[0].clientY;
+    const delta = Math.max(0, currentY - startY);
+    if (delta === 0) return;
+    const pulled = delta > PTR_MAX ? PTR_MAX + (delta - PTR_MAX) * 0.15 : delta;
+    setProgress(Math.min(1, pulled / PTR_THRESHOLD));
+  }, { passive: true });
+
+  content.addEventListener('touchend', () => {
+    if (!pulling || refreshing) return;
+    const delta = Math.max(0, currentY - startY);
+    if (delta >= PTR_THRESHOLD) doRefresh(); else reset();
+    pulling = false;
+  });
+
+  let mouseDown = false;
+  content.addEventListener('mousedown', e => {
+    if (content.scrollTop === 0 && !refreshing) { startY = e.clientY; pulling = true; mouseDown = true; }
+  });
+  document.addEventListener('mousemove', e => {
+    if (!mouseDown || !pulling || refreshing) return;
+    currentY = e.clientY;
+    const delta = Math.max(0, currentY - startY);
+    if (delta === 0) return;
+    const pulled = delta > PTR_MAX ? PTR_MAX + (delta - PTR_MAX) * 0.15 : delta;
+    setProgress(Math.min(1, pulled / PTR_THRESHOLD));
+  });
+  document.addEventListener('mouseup', () => {
+    if (!mouseDown) return;
+    mouseDown = false;
+    if (!pulling || refreshing) return;
+    const delta = Math.max(0, currentY - startY);
+    if (delta >= PTR_THRESHOLD) doRefresh(); else reset();
+    pulling = false;
+  });
+})();
+
+const VACANCES_PERIODES = [
+  { nom: "Toussaint",  debut: "2025-10-20", fin: "2025-11-02" },
+  { nom: "Noël",       debut: "2025-12-22", fin: "2026-01-04" },
+  { nom: "Carnaval",   debut: "2026-02-16", fin: "2026-03-01" },
+  { nom: "Pâques",     debut: "2026-04-27", fin: "2026-05-10" },
+  { nom: "Été",        debut: "2026-07-04", fin: "2027-08-31" },
+];
+
+const JOURS_FERIES = {
+  "2025-11-11": "Armistice",
+  "2026-04-06": "Lundi de Pâques",
+  "2026-05-14": "Ascension",
+  "2026-05-25": "Lundi de Pentecôte",
+};
+
+function getVacanceInfo(date) {
+  const key = toISODate(date);
+  for (const v of VACANCES_PERIODES) { if (key >= v.debut && key <= v.fin) return v; }
+  return null;
+}
+function getFerieNom(date) { return JOURS_FERIES[toISODate(date)] || null; }
+
+const HORAIRE = {
+  lundi: [
+    { p:1, cours:"Éducation physique", salle:null, prof:"Mr Mulot / Mme Hachat" },
+    { p:2, cours:"Éducation physique", salle:null, prof:"Mr Mulot / Mme Hachat" },
+    { p:3, cours:"Éducation physique", salle:null, prof:"Mr Mulot / Mme Hachat" },
+    { p:4, cours:"Sciences", salle:"17 Labo", prof:"Mme Stouder" },
+    { p:5, cours:"Musique", salle:"15", prof:"Mr Leclercq" },
+    { p:6, cours:"Mathématique", salle:"11", prof:"Mme Centritto" },
+    { p:"midi", cours:null, salle:null, prof:null },
+    { p:7, cours:"Mathématique", salle:"11", prof:"Mme Centritto" },
+    { p:8, cours:"Français", salle:"14", prof:"Mme Filbiche" },
+    { p:9, cours:"Français", salle:"14", prof:"Mme Filbiche" },
+  ],
+  mardi: [
+    { p:1, cours:"Français", salle:"14", prof:"Mme Filbiche" },
+    { p:2, cours:"Français", salle:"14", prof:"Mme Filbiche" },
+    { p:3, cours:"Anglais", salle:"15", prof:"Mme Roland" },
+    { p:4, cours:"Néerlandais (LM1)", salle:"18", prof:"Mme Jacquemin" },
+    { p:5, cours:"Néerlandais (LM1)", salle:"18", prof:"Mme Jacquemin" },
+    { p:6, cours:"Néerlandais (LM1)", salle:"18", prof:"Mme Jacquemin" },
+    { p:"midi", cours:null, salle:null, prof:null },
+    { p:7, cours:"Remédiations", salle:"B15", prof:"Mme Jacquemin / Mme Stouder / Mme Filbiche / Mme Gucheska" },
+    { p:8, cours:"Activités horticoles", salle:"3 Lem", prof:"Mr Lemire" },
+    { p:9, cours:"Activités sportives", salle:null, prof:"Mr Mulot" },
+  ],
+  mercredi: [
+    { p:1, cours:"Anglais", salle:"15", prof:"Mme Roland" },
+    { p:2, cours:"Anglais", salle:"15", prof:"Mme Roland" },
+    { p:3, cours:"Néerlandais (LM1)", salle:"18", prof:"Mme Jacquemin" },
+    { p:4, cours:"Néerlandais (LM1)", salle:"18", prof:"Mme Jacquemin" },
+    { p:5, cours:null, salle:null, prof:null },
+    { p:6, cours:null, salle:null, prof:null },
+    { p:"midi", cours:null, salle:null, prof:null },
+    { p:7, cours:null, salle:null, prof:null },
+    { p:8, cours:null, salle:null, prof:null },
+    { p:9, cours:null, salle:null, prof:null },
+  ],
+  jeudi: [
+    { p:1, cours:"CPC", salle:"18", prof:"Mme Depré" },
+    { p:2, cours:"Religion", salle:"11", prof:"Mme Surinx" },
+    { p:3, cours:"Morale", salle:"15", prof:"Mme Bassine" },
+    { p:4, cours:"Citoyenneté", salle:"18", prof:"Mme Depré" },
+    { p:5, cours:"Activités sciences", salle:"17 Labo", prof:"Mme Stouder" },
+    { p:6, cours:"Activités informatique", salle:"11", prof:"Mme Langlois" },
+    { p:"midi", cours:null, salle:null, prof:null },
+    { p:7, cours:"P45", salle:null, prof:null },
+    { p:8, cours:"P45", salle:null, prof:null },
+    { p:9, cours:"P45", salle:null, prof:null },
+  ],
+  vendredi: [
+    { p:1, cours:"Géographie", salle:"13", prof:"Mr Lotte" },
+    { p:2, cours:"Géographie", salle:"13", prof:"Mr Lotte" },
+    { p:3, cours:"Français", salle:"14", prof:"Mme Filbiche" },
+    { p:4, cours:"Français", salle:"14", prof:"Mme Filbiche" },
+    { p:5, cours:"Technologie", salle:"12", prof:"Mme Valvasori" },
+    { p:6, cours:"Mathématique", salle:"11", prof:"Mme Centritto" },
+    { p:"midi", cours:null, salle:null, prof:null },
+    { p:7, cours:"Mathématique", salle:"11", prof:"Mme Centritto" },
+    { p:8, cours:"Histoire", salle:"18", prof:"Mme Rivero" },
+    { p:9, cours:"Histoire", salle:"18", prof:"Mme Rivero" },
+  ],
+};
+
+const PERIODES = {
+  1:{d:"08:20",f:"09:05"}, 2:{d:"09:05",f:"09:50"}, 3:{d:"09:50",f:"10:35"},
+  4:{d:"10:50",f:"11:35"}, 5:{d:"11:35",f:"12:20"}, 6:{d:"12:20",f:"13:05"},
+  midi:{d:"13:05",f:"13:50"},
+  7:{d:"13:50",f:"14:35"}, 8:{d:"14:35",f:"15:20"}, 9:{d:"15:20",f:"16:05"},
+};
+
+const JOURS_FR = {1:"lundi",2:"mardi",3:"mercredi",4:"jeudi",5:"vendredi"};
+const DAY_LETTERS = ['L','M','M','J','V','S','D'];
+
+const COLORS = {
+  "Mathématique":"#3b82f6","Français":"#a855f7","Anglais":"#f97316",
+  "Sciences":"#22c55e","Éducation physique":"#ef4444","Activités sportives":"#ef4444",
+  "Néerlandais (LM1)":"#06b6d4","Histoire":"#8b5cf6","Géographie":"#10b981",
+  "Religion":"#f59e0b","Morale":"#f59e0b","Musique":"#ec4899","Technologie":"#64748b",
+  "Citoyenneté":"#0ea5e9","CPC":"#0ea5e9","Activités horticoles":"#84cc16",
+  "Activités sciences":"#22c55e","Activités informatique":"#6366f1",
+  "Remédiations":"#9ca3af","Pause de midi":"#d1d5db","P45":"#f97316",
+};
+const PALETTE = ['#3b82f6','#a855f7','#f97316','#22c55e','#ef4444','#ec4899'];
+
+function courseColor(c) { return c ? (COLORS[c] || '#6b7280') : '#d1d5db'; }
+function uid() { return Math.random().toString(36).slice(2); }
+function toISODate(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function formatTime(d) { return d.toLocaleTimeString('fr-FR',{hour:'2-digit',minute:'2-digit'}); }
+function formatDateFull(d) { return d.toLocaleDateString('fr-FR',{weekday:'long',day:'numeric',month:'long',year:'numeric'}); }
+function formatMonthYear(d) { return d.toLocaleDateString('fr-FR',{month:'long',year:'numeric'}); }
+function isSameDay(a,b) { return a.getFullYear()===b.getFullYear()&&a.getMonth()===b.getMonth()&&a.getDate()===b.getDate(); }
+function dayKey(d) { return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`; }
+
+function parseCSV(csv) {
+  const lines = csv.trim().split('\n');
+  if (lines.length < 2) return [];
+  return lines.slice(1).map(line => {
+    const cols = line.split(',').map(s => s.replace(/^"|"$/g,'').trim());
+    return { nom: cols[0]||'', genre: cols[1]||'', matiere: cols[2]||'', date: cols[3]||'', motif: cols[4]||'' };
+  }).filter(p => p.nom && p.date);
+}
+
+async function fetchSheet() {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('last-sync-label');
+
+  if (!navigator.onLine) { loadFromLocalDB(); return; }
+
+  dot.classList.add('syncing');
+  dot.classList.remove('offline');
+  label.textContent = 'Synchronisation…';
+
+  try {
+    const res = await fetch(SHEET_URL + '&t=' + Date.now());
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const text = await res.text();
+    profsAbsents = parseCSV(text);
+    const cache = { data: profsAbsents, ts: Date.now() };
+    try { localStorage.setItem('profsAbsentsCache', JSON.stringify(cache)); } catch(e) {}
+    dot.classList.remove('syncing','offline');
+    document.getElementById('offline-banner').classList.remove('visible');
+    label.textContent = 'Sync ' + formatTime(new Date());
+  } catch(e) {
+    loadFromCache();
+  }
+}
+
+function loadFromCache() {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('last-sync-label');
+  dot.classList.add('offline');
+  dot.classList.remove('syncing');
+  document.getElementById('offline-banner').classList.add('visible');
+  try {
+    const raw = localStorage.getItem('profsAbsentsCache');
+    if (raw) {
+      const cache = JSON.parse(raw);
+      profsAbsents = cache.data || [];
+      const ago = cache.ts ? new Date(cache.ts) : null;
+      label.textContent = ago ? 'Serveur inaccessible · Cache du ' + ago.toLocaleDateString('fr-FR',{day:'numeric',month:'short'}) : 'Serveur inaccessible';
+    } else { loadFromLocalDB(); }
+  } catch(e) { loadFromLocalDB(); }
+}
+
+function loadFromLocalDB() {
+  const dot = document.getElementById('sync-dot');
+  const label = document.getElementById('last-sync-label');
+  dot.classList.add('offline');
+  dot.classList.remove('syncing');
+  document.getElementById('offline-banner').classList.add('visible');
+  profsAbsents = LOCAL_DB.profsAbsents || [];
+  label.textContent = 'Serveur inaccessible';
+}
+
+function getAbsentsForDate(date) {
+  const key = toISODate(date);
+  return profsAbsents.filter(p => p.date === key);
+}
+
+function buildActivites(date) {
+  const jourFr = JOURS_FR[date.getDay()];
+  if (!jourFr) return [];
+  const entries = HORAIRE[jourFr];
+  const slots = [];
+  for (const e of entries) {
+    const per = PERIODES[e.p];
+    if (!per) continue;
+    const isMidi = e.p === 'midi';
+    const isPause = isMidi || !e.cours;
+    const label = isMidi ? 'Pause de midi' : (e.cours || null);
+    if (slots.length > 0) {
+      const last = slots[slots.length-1];
+      if (!isPause && !last.pause && last.cours === label && last.prof === e.prof && last.salle === e.salle && last.fin === per.d) {
+        last.fin = per.f; continue;
+      }
+    }
+    if (label || isMidi) slots.push({ cours: label, salle: e.salle, prof: e.prof, debut: per.d, fin: per.f, pause: isPause });
+  }
+  return slots;
+}
+
+let currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let selectedDate = null;
+let agendaMap = {};
+const today = new Date();
+
+function getDaysInMonth(m) {
+  const year = m.getFullYear(), month = m.getMonth();
+  const first = new Date(year, month, 1);
+  const last = new Date(year, month+1, 0);
+  const days = [];
+  const offset = (first.getDay()+6)%7;
+  for (let i=offset-1;i>=0;i--) days.push(new Date(year, month, -i));
+  for (let d=1;d<=last.getDate();d++) days.push(new Date(year, month, d));
+  const rem = 7-(days.length%7||7);
+  if(rem<7) for(let d=1;d<=rem;d++) days.push(new Date(year, month+1, d));
+  return days;
+}
+
+function renderCalendar() {
+  document.getElementById('month-label').textContent = formatMonthYear(currentMonth);
+  const grid = document.getElementById('cal-grid');
+  grid.innerHTML = '';
+  const days = getDaysInMonth(currentMonth);
+  days.forEach(d => {
+    const inMonth = d.getMonth() === currentMonth.getMonth();
+    const isToday = isSameDay(d, today);
+    const isSel = selectedDate && isSameDay(d, selectedDate);
+    const jsDay = d.getDay();
+    const isWeekend = jsDay===0||jsDay===6;
+    const vacInfo = inMonth ? getVacanceInfo(d) : null;
+    const ferieNom = inMonth ? getFerieNom(d) : null;
+    const hasAbsent = inMonth && !isWeekend && !vacInfo && !ferieNom && getAbsentsForDate(d).length > 0;
+
+    let cls = 'day-cell';
+    if (!inMonth) cls += ' other-month';
+    if (isSel) cls += ' selected';
+    else if (isToday) cls += ' today';
+    if (isWeekend && !isSel) cls += ' weekend';
+    if (!isSel && vacInfo) cls += ' vacances';
+    else if (!isSel && ferieNom) cls += ' ferie';
+
+    const btn = document.createElement('button');
+    btn.className = cls;
+    let dotHtml = hasAbsent && !isSel ? '<div class="absent-dot"></div>' : '';
+    btn.innerHTML = `<span class="dl">${DAY_LETTERS[(jsDay+6)%7]}</span><span class="dn">${d.getDate()}</span>${dotHtml}`;
+    if (inMonth) btn.addEventListener('click', () => openDetail(d));
+    grid.appendChild(btn);
+  });
+}
+
+function openDetail(date) {
+  selectedDate = date;
+  const key = dayKey(date);
+  if (!agendaMap[key]) agendaMap[key] = { taches: [] };
+  renderCalendar();
+  renderDetail(date);
+  document.getElementById('detail-overlay').classList.add('open');
+}
+
+function renderDetail(date) {
+  const jsDay = date.getDay();
+  const isWeekend = jsDay===0||jsDay===6;
+  const vacInfo = getVacanceInfo(date);
+  const ferieNom = getFerieNom(date);
+  document.getElementById('detail-title').textContent = formatDateFull(date);
+  const body = document.getElementById('detail-body');
+  const key = dayKey(date);
+  const taches = agendaMap[key]?.taches || [];
+  const absents = getAbsentsForDate(date);
+  let html = '';
+
+  if (vacInfo) {
+    html += `<div class="vacances-banner" style="background:#fef9c3;border:1px solid #fde68a;">
+      <span class="vb-icon">🏖️</span>
+      <div>
+        <div class="vb-title" style="color:#92400e;">Vacances — ${vacInfo.nom}</div>
+        <div class="vb-sub" style="color:#b45309;">Pas de cours · Calendrier FWB 2025-2026</div>
+      </div>
+    </div>`;
+  } else if (ferieNom) {
+    html += `<div class="vacances-banner" style="background:#fce7f3;border:1px solid #fbcfe8;">
+      <span class="vb-icon">🎉</span>
+      <div>
+        <div class="vb-title" style="color:#9d174d;">Jour férié — ${ferieNom}</div>
+        <div class="vb-sub" style="color:#be185d;">Pas de cours · Calendrier FWB 2025-2026</div>
+      </div>
+    </div>`;
+  }
+
+  const activites = buildActivites(date);
+  html += `<div class="info-section">
+    <div class="info-section-header"><span class="icon">🕐</span><h4>${isWeekend||vacInfo||ferieNom?'Pas de cours':'Horaire du jour'}</h4></div>
+    <div class="info-body">`;
+  if (isWeekend) { html += `<p class="empty-text">Week-end 🎉</p>`; }
+  else if (vacInfo || ferieNom) { html += `<p class="empty-text">Pas de cours ce jour</p>`; }
+  else if (activites.length === 0) { html += `<p class="empty-text">Aucun cours ce jour</p>`; }
+  else {
+    activites.forEach(a => {
+      const color = a.pause ? '#d1d5db' : courseColor(a.cours);
+      html += `<div class="activite-row${a.pause?' pause':''}">
+        <div class="color-bar" style="background:${color}"></div>
+        <div class="activite-content">
+          <div class="activite-top">
+            <span class="activite-titre">${a.cours||'Libre'}</span>
+            <span class="activite-heure">${a.debut} – ${a.fin}</span>
+          </div>
+          ${!a.pause ? `<div class="activite-meta">
+            ${a.salle ? `<span class="meta-chip">🏫 Salle ${a.salle}</span>` : ''}
+            ${a.prof ? `<span class="meta-chip">👤 ${a.prof}</span>` : ''}
+          </div>` : ''}
+        </div>
+      </div>`;
+    });
+  }
+  html += `</div></div>`;
+
+  const dataSource = isOnline
+    ? `<div class="sync-row"><div class="dot" style="background:var(--green)"></div><span>Synchronisé avec Google Sheet</span></div>`
+    : `<div class="sync-row"><div class="dot" style="background:var(--red)"></div><span>Serveur inaccessible — données locales affichées</span></div>`;
+
+  html += `<div class="info-section">
+    <div class="info-section-header"><span class="icon">🙅</span><h4>Profs absents</h4></div>
+    <div class="info-body">`;
+  if (absents.length === 0) { html += `<p class="empty-text">Aucun prof absent ce jour</p>`; }
+  else { absents.forEach(p => { html += `<div class="prof-absent-row"><div><div class="prof-nom">${p.genre} ${p.nom}</div><div class="prof-matiere">${p.matiere}</div></div><span class="motif-chip">${p.motif}</span></div>`; }); }
+  html += dataSource + `</div></div>`;
+
+  html += `<div class="info-section">
+    <div class="info-section-header"><span class="icon">✅</span><h4>Tâches</h4></div>
+    <div class="info-body" id="taches-body">`;
+  if (taches.length === 0) html += `<p class="empty-text" id="no-tache-msg">Aucune tâche prévue</p>`;
+  taches.forEach(t => { html += `<div class="tache-row" id="tache-${t.id}"><span class="badge" style="background:${t.color}">${t.heure}</span><span class="tache-titre">${t.titre}</span><button class="del-btn" onclick="removeTask('${key}','${t.id}')">🗑</button></div>`; });
+  html += `<div class="add-task-area"><button class="btn" onclick="openAddTask('${key}')" style="margin-top:10px;">+ Ajouter une tâche</button></div></div></div>`;
+
+  html += `<div class="info-section"><div class="info-section-header"><span class="icon">🔄</span><h4>Changements d'horaire</h4></div><div class="info-body"><p class="empty-text">Aucun changement d'horaire</p></div></div>`;
+  html += `<div class="info-section"><div class="info-section-header"><span class="icon">🚪</span><h4>Sorties anticipées</h4></div><div class="info-body"><p class="empty-text">Aucune sortie anticipée</p></div></div>`;
+  html += `<div class="info-section"><div class="info-section-header"><span class="icon">⭐</span><h4>Événements spéciaux</h4></div><div class="info-body"><p class="empty-text">Aucun événement</p></div></div>`;
+  body.innerHTML = html;
+}
+
+function removeTask(key, id) {
+  agendaMap[key].taches = agendaMap[key].taches.filter(t => t.id !== id);
+  renderDetail(selectedDate);
+}
+
+let addTaskKey = null;
+let selectedColor = PALETTE[0];
+
+function openAddTask(key) {
+  addTaskKey = key;
+  selectedColor = PALETTE[0];
+  document.getElementById('task-titre').value = '';
+  document.getElementById('task-heure').value = '08:00';
+  document.getElementById('task-add-btn').disabled = true;
+  const row = document.getElementById('palette-row');
+  row.innerHTML = '';
+  PALETTE.forEach(c => {
+    const btn = document.createElement('button');
+    btn.className = 'color-circle' + (c === selectedColor ? ' selected' : '');
+    btn.style.background = c;
+    btn.addEventListener('click', () => { selectedColor = c; row.querySelectorAll('.color-circle').forEach(b => b.classList.remove('selected')); btn.classList.add('selected'); });
+    row.appendChild(btn);
+  });
+  document.getElementById('add-task-modal').classList.add('open');
+}
+
+document.getElementById('task-titre').addEventListener('input', function() { document.getElementById('task-add-btn').disabled = !this.value.trim(); });
+document.getElementById('task-add-btn').addEventListener('click', () => {
+  const titre = document.getElementById('task-titre').value.trim();
+  const heure = document.getElementById('task-heure').value;
+  if (!titre || !addTaskKey) return;
+  const t = { id: uid(), heure, titre, color: selectedColor };
+  agendaMap[addTaskKey].taches.push(t);
+  agendaMap[addTaskKey].taches.sort((a,b) => a.heure.localeCompare(b.heure));
+  document.getElementById('add-task-modal').classList.remove('open');
+  renderDetail(selectedDate);
+});
+document.getElementById('add-task-modal').addEventListener('click', function(e) { if (e.target === this) this.classList.remove('open'); });
+
+document.getElementById('detail-close').addEventListener('click', () => { document.getElementById('detail-overlay').classList.remove('open'); selectedDate = null; renderCalendar(); });
+document.getElementById('detail-overlay').addEventListener('click', function(e) { if (e.target === this) { this.classList.remove('open'); selectedDate = null; renderCalendar(); } });
+
+document.getElementById('prev-month').addEventListener('click', () => { currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()-1, 1); renderCalendar(); });
+document.getElementById('next-month').addEventListener('click', () => { currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth()+1, 1); renderCalendar(); });
+
+const TAB_LABELS = { agenda:'Agenda', demandes:'Demandes', chat:'Chat' };
+function switchView(view) {
+  document.querySelectorAll('.tab-bar .tab-btn').forEach(b => b.classList.remove('active'));
+  document.querySelector(`.tab-bar .tab-btn[data-view="${view}"]`)?.classList.add('active');
+  document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+  document.getElementById('view-'+view).classList.add('active');
+  document.getElementById('header-title').textContent = TAB_LABELS[view];
+}
+document.querySelectorAll('.tab-btn[data-view]').forEach(btn => { btn.addEventListener('click', () => switchView(btn.dataset.view)); });
+
+document.querySelectorAll('.seg-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.seg-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const tab = btn.dataset.tab;
+    document.getElementById('form-changement').style.display = tab==='changement'?'block':'none';
+    document.getElementById('form-sortie').style.display = tab==='sortie'?'block':'none';
+  });
+});
+
+const INITIAL_MSGS = {
+  1: [{id:uid(), auteur:'Prof Martin', texte:"N'oubliez pas le devoir pour demain!", ts: new Date(Date.now()-3600000)}],
+  2: [{id:uid(), auteur:'Sophie', texte:"Quelqu'un a les notes du cours d'hier?", ts: new Date(Date.now()-7200000)}],
+  3: [],
+  4: [{id:uid(), auteur:'Prof Dubois', texte:'Interro reportée à vendredi', ts: new Date(Date.now()-1800000)}],
+  5: [], 6: [],
+};
+let chatMessages = JSON.parse(JSON.stringify(INITIAL_MSGS, (k,v) => v instanceof Date ? v.toISOString() : v));
+let activeClasse = 1;
+
+function renderClassTabs() {
+  const tabs = document.getElementById('class-tabs');
+  tabs.innerHTML = '';
+  for (let i=1;i<=6;i++) {
+    const btn = document.createElement('button');
+    btn.className = 'class-tab' + (i===activeClasse?' active':'');
+    btn.textContent = `Classe ${i}`;
+    btn.addEventListener('click', () => { activeClasse=i; renderClassTabs(); renderMessages(); });
+    tabs.appendChild(btn);
+  }
+}
+
+function renderMessages() {
+  const area = document.getElementById('messages-area');
+  const msgs = chatMessages[activeClasse] || [];
+  if (msgs.length === 0) { area.innerHTML = '<p style="text-align:center;color:#a0917a;margin-top:40px;font-family:Caveat,cursive;font-size:18px;">Aucun message pour l\'instant ✏️</p>'; return; }
+  area.innerHTML = msgs.map(m => { const isMe = m.auteur==='Moi'; const ts = new Date(m.ts); return `<div class="msg-wrap ${isMe?'me':'them'}">${!isMe?`<span class="msg-auteur">${m.auteur}</span>`:''}<div class="bubble ${isMe?'me':'them'}">${m.texte}</div><span class="msg-time">${formatTime(ts)}</span></div>`; }).join('');
+  area.scrollTop = area.scrollHeight;
+}
+
+const chatField = document.getElementById('chat-field');
+const sendBtn = document.getElementById('send-btn');
+chatField.addEventListener('input', () => { sendBtn.disabled = !chatField.value.trim(); });
+chatField.addEventListener('keydown', e => { if (e.key==='Enter'&&!e.shiftKey) { e.preventDefault(); sendMessage(); } });
+sendBtn.addEventListener('click', sendMessage);
+function sendMessage() {
+  const text = chatField.value.trim();
+  if (!text) return;
+  if (!chatMessages[activeClasse]) chatMessages[activeClasse] = [];
+  chatMessages[activeClasse].push({ id:uid(), auteur:'Moi', texte:text, ts: new Date().toISOString() });
+  chatField.value = ''; sendBtn.disabled = true; renderMessages();
+}
+
+async function init() {
+  updateOnlineStatus();
+  renderCalendar();
+  renderClassTabs();
+  renderMessages();
+  await fetchSheet();
+  renderCalendar();
+  setInterval(async () => {
+    await fetchSheet();
+    if (selectedDate) renderDetail(selectedDate);
+    renderCalendar();
+  }, 600000);
+}
+
+init();
+</script>
+</body>
+</html>
